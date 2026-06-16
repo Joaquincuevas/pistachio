@@ -1,16 +1,52 @@
-# React + Vite
+# 🥜 Pistachio
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+Aplicación web de escritorio para planificar la **malla curricular de Ingeniería Civil** de la Universidad de los Andes. Visualiza ramos, prerrequisitos y avance académico en una sola vista profesional.
 
-Currently, two official plugins are available:
+> Botánicamente, el pistacho no es un fruto seco: es una drupa, pariente del mango y de la hiedra venenosa.
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+## Características
 
-## React Compiler
+- **Inicio de sesión** con validación de correo institucional (`@uandes.cl` / `@miuandes.cl`).
+- **Selección de especialidad** (Obras Civiles, Computación, Industrial, Eléctrica, Química) que define los semestres 5–8.
+- **Malla curricular** en grilla por semestres, con códigos de color por estado y **resaltado de la cadena de prerrequisitos** al pasar el cursor.
+- **Panel de detalle** de cada ramo: descripción, objetivos, contenidos, prerrequisitos, ramos que habilita y selector de estado (Aprobado / Cursando / Pendiente).
+- **Seguimiento de progreso** persistente en `localStorage`: avance total, por semestre y por área, con gráfico de distribución.
+- **Búsqueda y filtros** en tabla por nombre, código, profesor, semestre, área y estado.
+- **Perfil** con estadísticas, cambio de especialidad y cierre de sesión.
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+## Stack
 
-## Expanding the ESLint configuration
+- React 19 + Vite
+- React Router (HashRouter)
+- Estado global con Context API + `localStorage`
+- Tipografías: Instrument Serif (display) + Inter (UI)
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+## Desarrollo
+
+```bash
+npm install
+npm run dev      # servidor de desarrollo
+npm run build    # build de producción
+npm run preview  # previsualizar el build
+```
+
+## Estructura
+
+```
+src/
+├── App.jsx              # router + rutas protegidas + shell
+├── store.jsx           # estado global (sesión, especialidad, progreso)
+├── data.js             # malla de las 5 especialidades (8 semestres)
+├── ui.jsx              # primitivos: Icon, Button, Modal, Card, etc.
+├── components/
+│   ├── Sidebar.jsx     # navegación lateral
+│   ├── Topbar.jsx      # cabecera de cada vista
+│   └── CoursePanel.jsx # panel deslizante de detalle de ramo
+└── screens/
+    ├── Login.jsx       # ingreso (split-screen)
+    ├── Onboarding.jsx  # selección de especialidad
+    ├── MallaView.jsx   # grilla de la malla (vista principal)
+    ├── Dashboard.jsx   # progreso y analítica
+    ├── Search.jsx      # búsqueda con filtros y tabla
+    └── Profile.jsx     # perfil y configuración
+```

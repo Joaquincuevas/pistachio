@@ -1,144 +1,122 @@
-import { useState } from 'react';
-import { Icon, StatusBadge } from '../ui';
-import { STATUS } from '../ui';
+import { useState, useMemo } from 'react';
+import { Topbar } from '../components/Topbar';
+import { CoursePanel } from '../components/CoursePanel';
+import { Icon, StatusPill } from '../ui';
+import { useApp } from '../store';
+import { STATUS_META, AREAS } from '../data';
 
-function FilterGroup({ title, children, defaultOpen = true }) {
-  const [open, setOpen] = useState(defaultOpen);
-  return (
-    <div style={{ borderBottom: '0.5px solid #ECECEC' }}>
-      <button onClick={() => setOpen(o => !o)} style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '14px 0', background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'Inter, system-ui', fontWeight: 700, fontSize: 15, color: 'var(--ink)' }}>
-        {title}
-        <span style={{ transform: open ? 'none' : 'rotate(-90deg)', transition: 'transform .2s', display: 'flex' }}>
-          <Icon name="chevDown" size={18} color="#9A9A9A" />
-        </span>
-      </button>
-      <div style={{ maxHeight: open ? 300 : 0, overflow: 'hidden', transition: 'max-height .28s ease' }}>
-        <div style={{ paddingBottom: 12, display: 'flex', flexDirection: 'column', gap: 2 }}>{children}</div>
-      </div>
-    </div>
-  );
-}
-
-function CheckRow({ label, checked, onToggle }) {
-  return (
-    <button onClick={onToggle} style={{ display: 'flex', alignItems: 'center', gap: 11, padding: '8px 0', background: 'none', border: 'none', cursor: 'pointer', textAlign: 'left' }}>
-      <span style={{ width: 22, height: 22, borderRadius: 7, flexShrink: 0, border: checked ? 'none' : '2px solid #DcDcDc', background: checked ? 'var(--olive)' : 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all .15s' }}>
-        {checked && <Icon name="check" size={14} color="#fff" strokeWidth={2.8} />}
-      </span>
-      <span style={{ fontFamily: 'Inter, system-ui', fontSize: 15, color: 'var(--ink)' }}>{label}</span>
-    </button>
-  );
-}
-
-function RamoCard({ r, onOpen }) {
-  const s = STATUS[r.status];
-  const [press, setPress] = useState(false);
-  return (
-    <div onClick={() => onOpen(r)}
-      onPointerDown={() => setPress(true)} onPointerUp={() => setPress(false)} onPointerLeave={() => setPress(false)}
-      style={{
-        background: '#fff', borderRadius: 14, padding: '14px 16px', cursor: 'pointer',
-        borderLeft: `4px solid ${s.dot}`, boxShadow: '0 2px 10px rgba(0,0,0,0.05)',
-        display: 'flex', alignItems: 'center', gap: 12,
-        transform: press ? 'scale(0.985)' : 'scale(1)', transition: 'transform .12s ease',
-        WebkitTapHighlightColor: 'transparent',
-      }}>
-      <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ fontFamily: 'Inter, system-ui', fontWeight: 700, fontSize: 16, color: 'var(--ink)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{r.name}</div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 6 }}>
-          <span style={{ fontFamily: 'ui-monospace, monospace', fontSize: 12, color: '#9A9A9A' }}>{r.code}</span>
-          <span style={{ width: 3, height: 3, borderRadius: 9, background: '#D5D5D5' }} />
-          <span style={{ fontFamily: 'Inter, system-ui', fontSize: 12.5, color: '#9A9A9A', fontWeight: 500 }}>{r.credits} créditos</span>
-        </div>
-      </div>
-      <StatusBadge status={r.status} />
-    </div>
-  );
-}
-
-export function Search({ malla, onBack, onOpen }) {
+export function Search() {
+  const { malla, progress } = useApp();
   const [q, setQ] = useState('');
-  const [focus, setFocus] = useState(false);
-  const [sems, setSems] = useState({});
-  const [creds, setCreds] = useState({});
-  const [stat, setStat] = useState({ done: true, progress: true, pending: true });
+  const [selected, setSelected] = useState(null);
+  const [sem, setSem] = useState('all');
+  const [area, setArea] = useState('all');
+  const [stat, setStat] = useState('all');
+  const [sort, setSort] = useState('sem');
 
-  const allSems = [...new Set(malla.map(r => r.sem))].sort((a, b) => a - b);
-  const allCreds = [...new Set(malla.map(r => r.credits))].sort((a, b) => a - b);
-  const anySem = Object.values(sems).some(Boolean);
-  const anyCred = Object.values(creds).some(Boolean);
+  const sems = useMemo(() => [...new Set(malla.map(r => r.sem))].sort((a, b) => a - b), [malla]);
 
-  const results = malla.filter(r => {
-    if (q && !(`${r.name} ${r.code} ${r.prof}`.toLowerCase().includes(q.toLowerCase()))) return false;
-    if (anySem && !sems[r.sem]) return false;
-    if (anyCred && !creds[r.credits]) return false;
-    if (!stat[r.status]) return false;
-    return true;
-  });
+  const results = useMemo(() => {
+    let rs = malla.filter(r => {
+      if (q && !`${r.name} ${r.code} ${r.prof}`.toLowerCase().includes(q.toLowerCase())) return false;
+      if (sem !== 'all' && r.sem !== Number(sem)) return false;
+      if (area !== 'all' && r.area !== area) return false;
+      if (stat !== 'all' && (progress[r.code] || 'pending') !== stat) return false;
+      return true;
+    });
+    rs = [...rs].sort((a, b) => {
+      if (sort === 'name') return a.name.localeCompare(b.name);
+      if (sort === 'credits') return b.credits - a.credits;
+      return a.sem - b.sem || a.name.localeCompare(b.name);
+    });
+    return rs;
+  }, [malla, q, sem, area, stat, sort, progress]);
 
-  const clear = () => { setQ(''); setSems({}); setCreds({}); setStat({ done: true, progress: true, pending: true }); };
+  const selectStyle = {
+    height: 38, borderRadius: 'var(--r-md)', border: '1px solid var(--border-strong)',
+    background: 'var(--surface)', padding: '0 30px 0 12px', fontSize: 13.5, fontWeight: 600,
+    appearance: 'none', cursor: 'pointer',
+    backgroundImage: "url(\"data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'><path fill='%239AA09B' d='M0 0h10L5 6z'/></svg>\")",
+    backgroundRepeat: 'no-repeat', backgroundPosition: 'right 11px center',
+  };
 
   return (
-    <div style={{ minHeight: '100%', display: 'flex', flexDirection: 'column' }}>
-      <div style={{ padding: '56px 20px 0', background: 'var(--bg)', position: 'sticky', top: 0, zIndex: 20 }}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
-          <button onClick={onBack} style={{ display: 'inline-flex', alignItems: 'center', gap: 3, background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'Inter, system-ui', fontSize: 16, color: 'var(--ink)', fontWeight: 500 }}>
-            <Icon name="back" size={22} /> Atrás
-          </button>
-          <button onClick={clear} style={{ background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'Inter, system-ui', fontSize: 15, color: 'var(--olive)', fontWeight: 600 }}>
-            Limpiar
-          </button>
+    <>
+      <Topbar title="Buscar ramos" subtitle={`${results.length} de ${malla.length} ramos`} />
+      <div style={{ padding: 32, maxWidth: 1100 }}>
+        {/* search + filters */}
+        <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', alignItems: 'center', marginBottom: 20 }}>
+          <div style={{ position: 'relative', flex: '1 1 280px', minWidth: 240 }}>
+            <span style={{ position: 'absolute', left: 13, top: '50%', transform: 'translateY(-50%)', color: 'var(--faint)' }}><Icon name="search" size={18} /></span>
+            <input value={q} onChange={e => setQ(e.target.value)} placeholder="Buscar por nombre, código o profesor…"
+              style={{ width: '100%', height: 42, borderRadius: 'var(--r-md)', border: '1px solid var(--border-strong)', background: 'var(--surface)', padding: '0 14px 0 42px', fontSize: 14, outline: 'none' }} />
+          </div>
+          <select value={sem} onChange={e => setSem(e.target.value)} style={selectStyle}>
+            <option value="all">Todos los semestres</option>
+            {sems.map(s => <option key={s} value={s}>Semestre {s}</option>)}
+          </select>
+          <select value={area} onChange={e => setArea(e.target.value)} style={selectStyle}>
+            <option value="all">Todas las áreas</option>
+            {AREAS.map(a => <option key={a} value={a}>{a}</option>)}
+          </select>
+          <select value={stat} onChange={e => setStat(e.target.value)} style={selectStyle}>
+            <option value="all">Cualquier estado</option>
+            <option value="done">Aprobado</option>
+            <option value="progress">Cursando</option>
+            <option value="pending">Pendiente</option>
+          </select>
+          <select value={sort} onChange={e => setSort(e.target.value)} style={selectStyle}>
+            <option value="sem">Ordenar: semestre</option>
+            <option value="name">Ordenar: nombre</option>
+            <option value="credits">Ordenar: créditos</option>
+          </select>
         </div>
-        <div style={{ position: 'relative', marginBottom: 12 }}>
-          <span style={{ position: 'absolute', left: 13, top: '50%', transform: 'translateY(-50%)', display: 'flex' }}>
-            <Icon name="search" size={20} color="#9A9A9A" />
-          </span>
-          <input
-            autoFocus value={q} onChange={e => setQ(e.target.value)}
-            onFocus={() => setFocus(true)} onBlur={() => setFocus(false)}
-            placeholder="Buscar ramos, códigos, profesores…"
-            style={{
-              width: '100%', height: 46, borderRadius: 12,
-              border: `1.5px solid ${focus ? 'var(--olive)' : '#E4E4E4'}`,
-              background: '#fff', padding: '0 14px 0 42px', boxSizing: 'border-box',
-              fontFamily: 'Inter, system-ui', fontSize: 15.5, color: 'var(--ink)',
-              outline: 'none', transition: 'border-color .15s',
-            }}
-          />
+
+        {/* table */}
+        <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--r-lg)', overflow: 'hidden', boxShadow: 'var(--shadow-sm)' }}>
+          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+            <thead>
+              <tr style={{ background: 'var(--surface-2)', borderBottom: '1px solid var(--border)' }}>
+                <Th style={{ width: 90 }}>Código</Th>
+                <Th>Ramo</Th>
+                <Th style={{ width: 110 }}>Área</Th>
+                <Th style={{ width: 70, textAlign: 'center' }}>Sem.</Th>
+                <Th style={{ width: 70, textAlign: 'center' }}>Cr.</Th>
+                <Th style={{ width: 130 }}>Estado</Th>
+              </tr>
+            </thead>
+            <tbody>
+              {results.map(r => (
+                <tr key={r.code} onClick={() => setSelected(r)} className="row"
+                  style={{ borderBottom: '1px solid var(--border)', cursor: 'pointer' }}
+                  onMouseEnter={e => e.currentTarget.style.background = 'var(--surface-2)'}
+                  onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
+                  <Td style={{ fontFamily: 'ui-monospace, monospace', fontSize: 12.5, color: 'var(--muted)' }}>{r.code}</Td>
+                  <Td style={{ fontWeight: 600 }}>{r.name}<div style={{ fontSize: 12, color: 'var(--faint)', fontWeight: 400, marginTop: 1 }}>{r.prof}</div></Td>
+                  <Td style={{ color: 'var(--muted)', fontSize: 13 }}>{r.area}</Td>
+                  <Td style={{ textAlign: 'center', color: 'var(--muted)' }}>{r.sem}</Td>
+                  <Td style={{ textAlign: 'center', color: 'var(--muted)' }}>{r.credits}</Td>
+                  <Td><StatusPill status={progress[r.code] || 'pending'} meta={STATUS_META} /></Td>
+                </tr>
+              ))}
+              {results.length === 0 && (
+                <tr><td colSpan={6} style={{ padding: '48px 0', textAlign: 'center', color: 'var(--faint)', fontSize: 14 }}>
+                  No se encontraron ramos con esos filtros.
+                </td></tr>
+              )}
+            </tbody>
+          </table>
         </div>
       </div>
 
-      <div style={{ padding: '4px 20px 0' }}>
-        <FilterGroup title="Por semestre">
-          {allSems.map(s => (
-            <CheckRow key={s} label={`Semestre ${s}`} checked={!!sems[s]} onToggle={() => setSems(p => ({ ...p, [s]: !p[s] }))} />
-          ))}
-        </FilterGroup>
-        <FilterGroup title="Por créditos" defaultOpen={false}>
-          {allCreds.map(c => (
-            <CheckRow key={c} label={`${c} créditos`} checked={!!creds[c]} onToggle={() => setCreds(p => ({ ...p, [c]: !p[c] }))} />
-          ))}
-        </FilterGroup>
-        <FilterGroup title="Por estado" defaultOpen={false}>
-          <CheckRow label="Cursados" checked={stat.done} onToggle={() => setStat(p => ({ ...p, done: !p.done }))} />
-          <CheckRow label="En progreso" checked={stat.progress} onToggle={() => setStat(p => ({ ...p, progress: !p.progress }))} />
-          <CheckRow label="Pendientes" checked={stat.pending} onToggle={() => setStat(p => ({ ...p, pending: !p.pending }))} />
-        </FilterGroup>
-      </div>
-
-      <div style={{ padding: '18px 20px 36px', flex: 1 }}>
-        <h3 style={{ fontFamily: 'Inter, system-ui', fontWeight: 700, fontSize: 15, color: 'var(--ink)', margin: '0 0 12px' }}>
-          Resultados ({results.length})
-        </h3>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-          {results.map(r => <RamoCard key={r.code} r={r} onOpen={onOpen} />)}
-          {results.length === 0 && (
-            <div style={{ textAlign: 'center', padding: '40px 0', color: '#A8A8A8', fontFamily: 'Inter, system-ui', fontSize: 14.5 }}>
-              Sin resultados. Ajusta tu búsqueda o filtros.
-            </div>
-          )}
-        </div>
-      </div>
-    </div>
+      {selected && <CoursePanel course={selected} onClose={() => setSelected(null)} onNavigate={setSelected} />}
+    </>
   );
+}
+
+function Th({ children, style }) {
+  return <th style={{ textAlign: 'left', padding: '12px 16px', fontSize: 12, fontWeight: 700, color: 'var(--muted)', textTransform: 'uppercase', letterSpacing: 0.4, ...style }}>{children}</th>;
+}
+function Td({ children, style }) {
+  return <td style={{ padding: '13px 16px', fontSize: 13.5, ...style }}>{children}</td>;
 }

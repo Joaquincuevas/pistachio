@@ -1,131 +1,159 @@
-import { useState } from 'react';
-import { Icon, StatusBadge, Ring, PistachioMark } from '../ui';
-import { STATUS } from '../ui';
+import { useMemo } from 'react';
+import { Topbar } from '../components/Topbar';
+import { Card, Icon } from '../ui';
+import { useApp } from '../store';
+import { AREAS, STATUS_META } from '../data';
 
-function TopBar({ onMenu, onSearch }) {
-  const iconBtn = {
-    width: 40, height: 40, borderRadius: 99, border: 'none', background: 'transparent',
-    display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer',
-    WebkitTapHighlightColor: 'transparent',
-  };
+export function Dashboard() {
+  const { malla, progress, especialidad } = useApp();
+
+  const stats = useMemo(() => {
+    const totalCr = malla.reduce((s, r) => s + r.credits, 0);
+    const doneCr = malla.filter(r => progress[r.code] === 'done').reduce((s, r) => s + r.credits, 0);
+    const doneN = malla.filter(r => progress[r.code] === 'done').length;
+    const progN = malla.filter(r => progress[r.code] === 'progress').length;
+    const pendN = malla.filter(r => progress[r.code] === 'pending').length;
+    const pct = totalCr ? Math.round((doneCr / totalCr) * 100) : 0;
+    return { totalCr, doneCr, doneN, progN, pendN, pct, total: malla.length };
+  }, [malla, progress]);
+
+  const bySem = useMemo(() => {
+    const map = {};
+    malla.forEach(r => {
+      const g = map[r.sem] || (map[r.sem] = { total: 0, done: 0 });
+      g.total += r.credits;
+      if (progress[r.code] === 'done') g.done += r.credits;
+    });
+    return Object.keys(map).map(Number).sort((a, b) => a - b).map(sem => ({ sem, ...map[sem] }));
+  }, [malla, progress]);
+
+  const byArea = useMemo(() => AREAS.map(area => {
+    const rs = malla.filter(r => r.area === area);
+    const done = rs.filter(r => progress[r.code] === 'done').length;
+    return { area, total: rs.length, done };
+  }).filter(a => a.total > 0), [malla, progress]);
+
   return (
-    <div style={{
-      position: 'sticky', top: 0, zIndex: 30,
-      background: 'rgba(248,248,248,0.82)',
-      backdropFilter: 'blur(14px)', WebkitBackdropFilter: 'blur(14px)',
-      borderBottom: '0.5px solid rgba(0,0,0,0.07)',
-      padding: '56px 16px 10px', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-    }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 9 }}>
-        <PistachioMark size={28} />
-        <span style={{ fontFamily: 'Inter, system-ui', fontWeight: 700, fontSize: 13, letterSpacing: 2.5, textTransform: 'uppercase', color: 'var(--ink)' }}>Pistachio</span>
+    <>
+      <Topbar title="Mi progreso" subtitle={`Resumen de tu avance en ${especialidad?.name}`} />
+      <div style={{ padding: 32, maxWidth: 1100 }}>
+        {/* metric cards */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 16, marginBottom: 28 }}>
+          <Metric icon="target" label="Avance total" value={`${stats.pct}%`} accent />
+          <Metric icon="award" label="Ramos aprobados" value={`${stats.doneN} / ${stats.total}`} />
+          <Metric icon="layers" label="Créditos aprobados" value={`${stats.doneCr} / ${stats.totalCr}`} />
+          <Metric icon="clock" label="Cursando ahora" value={stats.progN} />
+        </div>
+
+        <div style={{ display: 'grid', gridTemplateColumns: '1.6fr 1fr', gap: 20, alignItems: 'start' }}>
+          {/* progress by semester */}
+          <Card style={{ padding: 24 }}>
+            <h3 style={{ fontSize: 16, fontWeight: 700, marginBottom: 4 }}>Avance por semestre</h3>
+            <p style={{ fontSize: 13, color: 'var(--muted)', marginBottom: 20 }}>Créditos aprobados sobre el total de cada semestre.</p>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+              {bySem.map(s => {
+                const pct = Math.round((s.done / s.total) * 100);
+                return (
+                  <div key={s.sem}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, marginBottom: 6 }}>
+                      <span style={{ fontWeight: 600 }}>Semestre {s.sem}</span>
+                      <span style={{ color: 'var(--muted)' }}>{s.done}/{s.total} cr · <b style={{ color: pct === 100 ? 'var(--done)' : 'var(--ink)' }}>{pct}%</b></span>
+                    </div>
+                    <div style={{ height: 8, background: 'var(--border)', borderRadius: 99, overflow: 'hidden' }}>
+                      <div style={{ height: '100%', width: `${pct}%`, background: pct === 100 ? 'var(--done)' : 'var(--olive)', borderRadius: 99, transition: 'width .6s' }} />
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </Card>
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
+            {/* distribution */}
+            <Card style={{ padding: 24 }}>
+              <h3 style={{ fontSize: 16, fontWeight: 700, marginBottom: 16 }}>Distribución de ramos</h3>
+              <Donut done={stats.doneN} prog={stats.progN} pend={stats.pendN} total={stats.total} />
+              <div style={{ marginTop: 18, display: 'flex', flexDirection: 'column', gap: 8 }}>
+                <LegendRow meta={STATUS_META.done} n={stats.doneN} />
+                <LegendRow meta={STATUS_META.progress} n={stats.progN} />
+                <LegendRow meta={STATUS_META.pending} n={stats.pendN} />
+              </div>
+            </Card>
+
+            {/* by area */}
+            <Card style={{ padding: 24 }}>
+              <h3 style={{ fontSize: 16, fontWeight: 700, marginBottom: 16 }}>Por área</h3>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 13 }}>
+                {byArea.map(a => (
+                  <div key={a.area}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, marginBottom: 5 }}>
+                      <span style={{ fontWeight: 600 }}>{a.area}</span>
+                      <span style={{ color: 'var(--muted)' }}>{a.done}/{a.total}</span>
+                    </div>
+                    <div style={{ height: 6, background: 'var(--border)', borderRadius: 99, overflow: 'hidden' }}>
+                      <div style={{ height: '100%', width: `${(a.done / a.total) * 100}%`, background: 'var(--olive)', borderRadius: 99, transition: 'width .6s' }} />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </Card>
+          </div>
+        </div>
       </div>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-        <button onClick={onSearch} style={iconBtn}><Icon name="search" size={22} /></button>
-        <button onClick={onMenu} style={iconBtn}><Icon name="menu" size={22} /></button>
+    </>
+  );
+}
+
+function Metric({ icon, label, value, accent }) {
+  return (
+    <Card style={{ padding: '18px 20px' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 9, marginBottom: 12 }}>
+        <span style={{ width: 32, height: 32, borderRadius: 'var(--r-sm)', background: accent ? 'var(--olive)' : 'var(--olive-light)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <Icon name={icon} size={17} color={accent ? '#fff' : 'var(--olive)'} />
+        </span>
+        <span style={{ fontSize: 13, color: 'var(--muted)', fontWeight: 600 }}>{label}</span>
+      </div>
+      <div className="serif" style={{ fontSize: 34, lineHeight: 1, color: 'var(--ink)' }}>{value}</div>
+    </Card>
+  );
+}
+
+function Donut({ done, prog, pend, total }) {
+  const size = 150, stroke = 18, r = (size - stroke) / 2, c = 2 * Math.PI * r;
+  const segs = [
+    { v: done, color: STATUS_META.done.dot },
+    { v: prog, color: STATUS_META.progress.dot },
+    { v: pend, color: STATUS_META.pending.dot },
+  ];
+  let offset = 0;
+  return (
+    <div style={{ display: 'flex', justifyContent: 'center', position: 'relative' }}>
+      <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} style={{ transform: 'rotate(-90deg)' }}>
+        {segs.map((s, i) => {
+          const frac = total ? s.v / total : 0;
+          const dash = frac * c;
+          const el = (
+            <circle key={i} cx={size / 2} cy={size / 2} r={r} fill="none" stroke={s.color} strokeWidth={stroke}
+              strokeDasharray={`${dash} ${c - dash}`} strokeDashoffset={-offset} style={{ transition: 'stroke-dasharray .6s' }} />
+          );
+          offset += dash;
+          return el;
+        })}
+      </svg>
+      <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
+        <span className="serif" style={{ fontSize: 30, lineHeight: 1 }}>{total ? Math.round((done / total) * 100) : 0}%</span>
+        <span style={{ fontSize: 11, color: 'var(--muted)', fontWeight: 600 }}>completado</span>
       </div>
     </div>
   );
 }
 
-function RamoCard({ r, onOpen }) {
-  const s = STATUS[r.status];
-  const [press, setPress] = useState(false);
+function LegendRow({ meta, n }) {
   return (
-    <div onClick={() => onOpen(r)}
-      onPointerDown={() => setPress(true)} onPointerUp={() => setPress(false)} onPointerLeave={() => setPress(false)}
-      style={{
-        background: '#fff', borderRadius: 14, padding: '14px 16px', cursor: 'pointer',
-        borderLeft: `4px solid ${s.dot}`, boxShadow: '0 2px 10px rgba(0,0,0,0.05)',
-        display: 'flex', alignItems: 'center', gap: 12,
-        transform: press ? 'scale(0.985)' : 'scale(1)', transition: 'transform .12s ease',
-        WebkitTapHighlightColor: 'transparent',
-      }}>
-      <div style={{ flex: 1, minWidth: 0 }}>
-        <div style={{ fontFamily: 'Inter, system-ui', fontWeight: 700, fontSize: 16, color: 'var(--ink)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{r.name}</div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 6 }}>
-          <span style={{ fontFamily: 'ui-monospace, monospace', fontSize: 12, color: '#9A9A9A' }}>{r.code}</span>
-          <span style={{ width: 3, height: 3, borderRadius: 9, background: '#D5D5D5' }} />
-          <span style={{ fontFamily: 'Inter, system-ui', fontSize: 12.5, color: '#9A9A9A', fontWeight: 500 }}>{r.credits} créditos</span>
-        </div>
-      </div>
-      <StatusBadge status={r.status} />
-    </div>
-  );
-}
-
-function SemSection({ g, onOpen }) {
-  const cr = g.ramos.reduce((s, r) => s + r.credits, 0);
-  const allDone = g.ramos.every(r => r.status === 'done');
-  return (
-    <div style={{ marginTop: 18 }}>
-      <div style={{
-        position: 'sticky', top: 108, zIndex: 20,
-        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-        padding: '8px 2px', background: 'linear-gradient(var(--bg) 70%, transparent)', marginBottom: 4,
-      }}>
-        <div style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}>
-          <h2 style={{ fontFamily: 'Inter, system-ui', fontWeight: 700, fontSize: 15, color: 'var(--ink)', margin: 0, letterSpacing: -0.2 }}>
-            Semestre {g.sem}
-          </h2>
-          {allDone && <Icon name="check" size={15} color="var(--green)" strokeWidth={2.4} />}
-        </div>
-        <span style={{ fontFamily: 'Inter, system-ui', fontSize: 12, color: '#A8A8A8', fontWeight: 600 }}>{cr} cr</span>
-      </div>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-        {g.ramos.map(r => <RamoCard key={r.code} r={r} onOpen={onOpen} />)}
-      </div>
-    </div>
-  );
-}
-
-function groupBySem(malla) {
-  const map = {};
-  malla.forEach(r => { (map[r.sem] = map[r.sem] || []).push(r); });
-  return Object.keys(map).map(Number).sort((a, b) => a - b).map(sem => ({ sem, ramos: map[sem] }));
-}
-
-export function Dashboard({ esp, malla, onOpen, onMenu, onSearch, onChangeEsp }) {
-  const groups = groupBySem(malla);
-  const totalCr = malla.reduce((s, r) => s + r.credits, 0);
-  const doneCr = malla.filter(r => r.status === 'done').reduce((s, r) => s + r.credits, 0);
-  const pct = doneCr / totalCr;
-
-  return (
-    <div style={{ minHeight: '100%', background: 'var(--bg)' }}>
-      <TopBar onMenu={onMenu} onSearch={onSearch} />
-
-      <div style={{ padding: '18px 20px 6px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 14 }}>
-        <div style={{ flex: 1 }}>
-          <button onClick={onChangeEsp} style={{
-            display: 'inline-flex', alignItems: 'center', gap: 6,
-            background: '#fff', border: '1px solid #ECECEC', borderRadius: 999,
-            padding: '5px 11px 5px 8px', cursor: 'pointer', marginBottom: 10,
-            WebkitTapHighlightColor: 'transparent',
-          }}>
-            <span style={{ fontSize: 15 }}>{esp.icon}</span>
-            <span style={{ fontFamily: 'Inter, system-ui', fontWeight: 600, fontSize: 12.5, color: 'var(--ink)' }}>{esp.tag}</span>
-            <Icon name="swap" size={14} color="#9A9A9A" />
-          </button>
-          <h1 style={{ fontFamily: '"Instrument Serif", serif', fontWeight: 400, fontSize: 34, lineHeight: 1, color: 'var(--ink)', margin: 0, letterSpacing: -0.3 }}>
-            {esp.name}
-          </h1>
-          <p style={{ fontFamily: 'Inter, system-ui', fontSize: 13.5, color: '#9A9A9A', margin: '7px 0 0' }}>
-            Semestre 1 – 8 · {malla.length} ramos · {totalCr} créditos
-          </p>
-        </div>
-        <div style={{ position: 'relative', display: 'flex', flexDirection: 'column', alignItems: 'center', flexShrink: 0 }}>
-          <Ring value={pct} size={62} stroke={5} />
-          <span style={{ position: 'absolute', top: 0, left: 0, width: 62, height: 62, display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: 'Inter, system-ui', fontWeight: 700, fontSize: 15, color: 'var(--olive)' }}>
-            {Math.round(pct * 100)}%
-          </span>
-          <span style={{ fontFamily: 'Inter, system-ui', fontSize: 10.5, color: '#9A9A9A', marginTop: 4, fontWeight: 600 }}>avance</span>
-        </div>
-      </div>
-
-      <div style={{ padding: '12px 20px 36px' }}>
-        {groups.map(g => <SemSection key={g.sem} g={g} onOpen={onOpen} />)}
-      </div>
+    <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13 }}>
+      <span style={{ width: 10, height: 10, borderRadius: 99, background: meta.dot }} />
+      <span style={{ flex: 1, color: 'var(--muted)' }}>{meta.label}</span>
+      <span style={{ fontWeight: 700 }}>{n}</span>
     </div>
   );
 }

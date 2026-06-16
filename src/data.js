@@ -113,21 +113,24 @@ const UNITS = [
   { t: 'Unidad 3 · Aplicación', items: ['Proyecto integrador', 'Estudio de caso', 'Presentación final'] },
 ];
 
-function statusForSem(sem) {
-  if (sem <= 3) return 'done';
-  if (sem === 4) return 'progress';
-  return 'pending';
-}
-
 export function mallaFor(espId) {
   const list = [...comun, ...(especialidadRamos[espId] || especialidadRamos.obras)];
-  return list.map(r => ({
-    ...r,
-    status: statusForSem(r.sem),
-    description: DESCRIPTION,
-    objectives: OBJECTIVES,
-    units: UNITS,
-  }));
+  return list.map(r => ({ ...r, description: DESCRIPTION, objectives: OBJECTIVES, units: UNITS }));
+}
+
+// Default progress: sem 1-3 done, sem 4 in-progress, rest pending.
+export function defaultProgress(malla) {
+  const p = {};
+  malla.forEach(r => {
+    p[r.code] = r.sem <= 3 ? 'done' : r.sem === 4 ? 'progress' : 'pending';
+  });
+  return p;
 }
 
 export const PISTA_FACT = 'Botánicamente, el pistacho no es un fruto seco: es una drupa, pariente del mango y de la hiedra venenosa.';
+export const AREAS = ['Ciencias Básicas', 'Ingeniería', 'Formación', 'Especialidad'];
+export const STATUS_META = {
+  done:     { label: 'Aprobado',    color: 'var(--done)',     bg: 'var(--done-bg)',     dot: '#4F9D6B' },
+  progress: { label: 'Cursando',    color: 'var(--progress)', bg: 'var(--progress-bg)', dot: '#3E82C8' },
+  pending:  { label: 'Pendiente',   color: 'var(--pending)',  bg: 'var(--pending-bg)',  dot: '#9AA09B' },
+};

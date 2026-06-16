@@ -56,23 +56,19 @@ export function Login() {
           </p>
         </div>
 
-        {/* video character — blends into the matching background via feathered edges */}
+        {/* video character — transparent (chroma-keyed), floats over the page with no frame */}
         <div style={{ position: 'relative', flex: 1, minHeight: 280, marginTop: 4, paddingBottom: 44 }}>
           <video
-            src="/pistachio-character.mp4"
-            poster="/pistachio-character.jpg"
+            poster="/pistachio-character.png"
             autoPlay muted loop playsInline preload="auto"
             style={{
               position: 'absolute', inset: 0, width: '100%', height: '100%',
               objectFit: 'contain', objectPosition: 'center center',
-              WebkitMaskImage:
-                'linear-gradient(to right, transparent 0%, #000 14%, #000 86%, transparent 100%), linear-gradient(to bottom, transparent 0%, #000 8%, #000 95%, transparent 100%)',
-              maskImage:
-                'linear-gradient(to right, transparent 0%, #000 14%, #000 86%, transparent 100%), linear-gradient(to bottom, transparent 0%, #000 8%, #000 95%, transparent 100%)',
-              WebkitMaskComposite: 'source-in',
-              maskComposite: 'intersect',
             }}
-          />
+          >
+            <source src="/pistachio-character.webm" type="video/webm" />
+            <source src="/pistachio-character.mp4" type="video/mp4" />
+          </video>
         </div>
 
         <p style={{ position: 'absolute', bottom: 22, left: 56, right: 24, zIndex: 2, fontSize: 13, fontStyle: 'italic', color: 'var(--faint)', maxWidth: 480, lineHeight: 1.55 }}>

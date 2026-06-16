@@ -31,34 +31,64 @@ export function Login() {
   }
 
   return (
-    <div style={{ display: 'flex', minHeight: '100vh' }}>
-      {/* Brand panel */}
+    <div style={{
+      display: 'flex', minHeight: '100vh', position: 'relative', overflow: 'hidden',
+      // background matched to the video's off-white backdrop (top-left #f3f3f3 → bottom-right #f9f9f9)
+      background: 'linear-gradient(135deg, #f2f2f1 0%, #f5f5f4 45%, #f9f9f8 100%)',
+    }}>
+      {/* faint brand accents, kept away from the character so the video stays seamless */}
+      <div style={{ position: 'absolute', top: -160, left: -120, width: 420, height: 420, borderRadius: '50%', background: 'rgba(74,124,89,0.05)', pointerEvents: 'none' }} />
+      <div style={{ position: 'absolute', bottom: -140, left: '32%', width: 320, height: 320, borderRadius: '50%', background: 'rgba(74,124,89,0.04)', pointerEvents: 'none' }} />
+
+      {/* ── Hero / character ── */}
       <div style={{
-        flex: '1 1 45%', background: 'var(--olive)', color: '#fff', padding: '56px 60px',
-        display: 'flex', flexDirection: 'column', justifyContent: 'space-between', position: 'relative', overflow: 'hidden',
+        flex: '1 1 54%', minWidth: 0, position: 'relative', display: 'flex', flexDirection: 'column',
+        padding: '40px 0 0 56px',
       }}>
-        <div style={{ position: 'absolute', top: -120, right: -120, width: 360, height: 360, borderRadius: '50%', background: 'rgba(255,255,255,0.06)' }} />
-        <div style={{ position: 'absolute', bottom: -80, left: -80, width: 260, height: 260, borderRadius: '50%', background: 'rgba(255,255,255,0.05)' }} />
-        <Logo size={36} light />
-        <div style={{ position: 'relative', zIndex: 1 }}>
-          <h1 className="serif" style={{ fontSize: 52, lineHeight: 1.04, marginBottom: 20 }}>
-            Tu malla curricular,<br />con claridad.
+        <div style={{ position: 'relative', zIndex: 2 }}>
+          <Logo size={34} />
+          <h1 className="serif" style={{ fontSize: 'clamp(40px, 5vw, 60px)', lineHeight: 1.02, color: 'var(--ink)', margin: '40px 0 18px', maxWidth: 560 }}>
+            Tu malla curricular,<br />con <span style={{ color: 'var(--olive)' }}>claridad.</span>
           </h1>
-          <p style={{ fontSize: 16, lineHeight: 1.6, color: 'rgba(255,255,255,0.85)', maxWidth: 420 }}>
-            Planifica tu carrera de Ingeniería Civil en la Universidad de los Andes. Visualiza ramos,
-            prerrequisitos y avance en una sola vista.
+          <p style={{ fontSize: 16, lineHeight: 1.6, color: 'var(--muted)', maxWidth: 460 }}>
+            Planifica tu carrera de Ingeniería Civil en la Universidad de los Andes.
+            Visualiza ramos, prerrequisitos y avance en una sola vista.
           </p>
         </div>
-        <p style={{ position: 'relative', zIndex: 1, fontSize: 13.5, fontStyle: 'italic', color: 'rgba(255,255,255,0.7)', maxWidth: 440, lineHeight: 1.55 }}>
+
+        {/* video character — blends into the matching background via feathered edges */}
+        <div style={{ position: 'relative', flex: 1, minHeight: 280, marginTop: 4, paddingBottom: 44 }}>
+          <video
+            src="/pistachio-character.mp4"
+            poster="/pistachio-character.jpg"
+            autoPlay muted loop playsInline preload="auto"
+            style={{
+              position: 'absolute', inset: 0, width: '100%', height: '100%',
+              objectFit: 'contain', objectPosition: 'center center',
+              WebkitMaskImage:
+                'linear-gradient(to right, transparent 0%, #000 14%, #000 86%, transparent 100%), linear-gradient(to bottom, transparent 0%, #000 8%, #000 95%, transparent 100%)',
+              maskImage:
+                'linear-gradient(to right, transparent 0%, #000 14%, #000 86%, transparent 100%), linear-gradient(to bottom, transparent 0%, #000 8%, #000 95%, transparent 100%)',
+              WebkitMaskComposite: 'source-in',
+              maskComposite: 'intersect',
+            }}
+          />
+        </div>
+
+        <p style={{ position: 'absolute', bottom: 22, left: 56, right: 24, zIndex: 2, fontSize: 13, fontStyle: 'italic', color: 'var(--faint)', maxWidth: 480, lineHeight: 1.55 }}>
           "{PISTA_FACT}"
         </p>
       </div>
 
-      {/* Form */}
-      <div style={{ flex: '1 1 55%', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 40, background: 'var(--bg)' }}>
-        <form onSubmit={submit} className="fade-up" style={{ width: '100%', maxWidth: 380 }}>
-          <h2 className="serif" style={{ fontSize: 32, marginBottom: 6 }}>Inicia sesión</h2>
-          <p style={{ fontSize: 14, color: 'var(--muted)', marginBottom: 30 }}>Accede con tu cuenta U. Andes para continuar.</p>
+      {/* ── Form card ── */}
+      <div style={{ flex: '1 1 46%', minWidth: 380, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 40 }}>
+        <form onSubmit={submit} className="fade-up" style={{
+          width: '100%', maxWidth: 400, background: 'var(--surface)',
+          border: '1px solid var(--border)', borderRadius: 'var(--r-lg)',
+          boxShadow: 'var(--shadow-lg)', padding: '36px 36px 32px',
+        }}>
+          <h2 className="serif" style={{ fontSize: 30, marginBottom: 6 }}>Inicia sesión</h2>
+          <p style={{ fontSize: 14, color: 'var(--muted)', marginBottom: 28 }}>Accede con tu cuenta U. Andes para continuar.</p>
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
             <Field label="Correo institucional" icon="mail" error={error}>
